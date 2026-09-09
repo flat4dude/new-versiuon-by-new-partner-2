@@ -61,7 +61,7 @@
     </div>
 
     <!-- Strategy Safety Net Alert Window -->
-    <div id="safety-alert" class="alert-banner">INITIALIZING ENGINE...</div>
+    <div id="safety-alert" class="alert-banner">INITIALIZING PIPELINE...</div>
     
     <div class="btn-container">
         <div class="trade-btn btn-up">
@@ -80,11 +80,13 @@
 
     let currentYesPrice = 50;
     let currentNoPrice = 50;
+    
+    // Primary open proxy utility endpoint
     const proxyUrl = "https://corsproxy.io?";
 
     async function fetchPublicKalshiPrices() {
         try {
-            // Pulls active commodities sorted cleanly by frequency categories 
+            // Pulls active endpoints directly using target parameter filtering strings
             const endpoint = "https://kalshi.com";
             const response = await fetch(proxyUrl + encodeURIComponent(endpoint));
             const data = await response.json();
@@ -93,10 +95,10 @@
                 return;
             }
 
-            // Isolate active gold contracts running on the 15-minute layout track
+            // Identifies active commodity items utilizing matching short ticker codes
             const goldMarkets = data.markets.filter(m => 
-                m.ticker.includes("GOLD") && 
-                m.frequency === "fifteen_min"
+                (m.ticker.includes("GLD") || m.ticker.includes("GOLD")) && 
+                (m.frequency === "fifteen_min" || m.ticker.includes("15MIN"))
             );
 
             if (goldMarkets.length === 0) {
@@ -104,12 +106,13 @@
                 return;
             }
 
-            // Lock onto the closest expiring active contract block
-            const activeMarket = goldMarkets.sort((a, b) => new Date(a.close_time) - new Date(b.close_time))[0];
+            // Always select the nearest chronologically closing active market contract segment
+            const sortedMarkets = goldMarkets.sort((a, b) => new Date(a.close_time) - new Date(b.close_time));
+            const activeMarket = sortedMarkets[0];
             const ticker = activeMarket.ticker;
             tickerEl.textContent = ticker;
 
-            // Fetch the current order book pricing data matrix
+            // Fetch the corresponding real-time order book probability data matrix
             const bookUrl = `https://kalshi.com{ticker}/orderbook`;
             const bookRes = await fetch(proxyUrl + encodeURIComponent(bookUrl));
             const bookData = await bookRes.json();
@@ -122,7 +125,7 @@
                 document.getElementById('down-prob').textContent = `Down • ${currentNoPrice}%`;
             }
         } catch (err) {
-            console.error("Feed connection gap encountered:", err);
+            console.error("Network syncing latency gap:", err);
         }
     }
 
@@ -153,7 +156,7 @@
         }
     }
 
-    // High speed query loop synchronization setup
+    // High performance processing sync routines
     setInterval(fetchPublicKalshiPrices, 2000);
     setInterval(processSafetyNetRules, 1000);
     

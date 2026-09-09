@@ -3,140 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalshi Gold Scalper - Safety Net</title>
+    <title>Kalshi Gold 15m Safety Net</title>
     <style>
         :root { 
-            --bg: #0d1117; --card: #161b22; --border: #30363d; 
-            --text: #c9d1d9; --muted: #8b949e; --gold: #f2ca30; 
-            --alert: #f85149; --go: #238636;
+            --bg: #090a0f; --card: #12131a; --border: #1f222e; 
+            --text: #ffffff; --muted: #7e8494; --gold: #f2ca30; 
+            --up: #00e699; --down: #ff3355;
         }
         body { 
             background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
             display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; 
         }
         .terminal { 
-            background: var(--card); border: 1px solid var(--border); border-radius: 12px; 
-            width: 100%; max-width: 440px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); 
+            background: var(--card); border: 1px solid var(--border); border-radius: 24px; 
+            width: 100%; max-width: 400px; padding: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.7); 
         }
-        .badge { 
-            display: block; text-align: center; padding: 10px; border-radius: 8px; 
-            font-size: 0.9rem; font-weight: 700; text-transform: uppercase; margin-bottom: 15px; 
-        }
-        .wait { background: rgba(242, 202, 48, 0.15); color: var(--gold); border: 1px solid rgba(242,202,48,0.3); }
-        .window { background: rgba(35, 134, 54, 0.2); color: #58a6ff; border: 1px solid #58a6ff; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .market-title { display: flex; align-items: center; gap: 8px; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; }
+        .token { background: var(--gold); color: #000; font-size: 0.75rem; font-weight: 900; padding: 3px 6px; border-radius: 6px; }
+        .clock-badge { background: #202430; font-family: monospace; font-size: 0.95rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; }
         
-        .timer-display {
-            text-align: center; font-size: 3rem; font-weight: 800; font-family: monospace; margin: 10px 0 20px 0; color: #fff;
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .price-block { display: flex; flex-direction: column; }
+        .price-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+        .target-val { font-size: 1.5rem; font-weight: 700; font-family: monospace; }
+        .live-val { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: var(--down); }
+        
+        .btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        .trade-btn { 
+            border: none; border-radius: 20px; padding: 16px; font-size: 1.1rem; font-weight: 800; 
+            color: #000; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
         }
-        .row { display: flex; flex-direction: column; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; padding: 10px 12px; }
-        .lbl { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: 600; }
-        .inp { 
-            width: 100%; background: none; border: none; color: #fff; text-align: right; 
-            font-size: 1.4rem; font-weight: 700; font-family: monospace; box-sizing: border-box; outline: none;
+        .btn-up { background: var(--up); }
+        .btn-down { background: var(--down); color: #fff; }
+        .multiplier { font-size: 0.8rem; font-weight: 500; opacity: 0.8; }
+        
+        .alert-banner {
+            text-align: center; padding: 12px; border-radius: 12px; font-size: 1rem; font-weight: 700;
+            background: #1a1d29; border: 1px solid var(--border); color: var(--muted); margin-bottom: 20px;
         }
-        .signal-box {
-            text-align: center; padding: 15px; border-radius: 8px; font-size: 1.5rem; font-weight: 800; margin-top: 15px;
-            background: #21262d; border: 1px solid var(--border); color: var(--muted);
-        }
-        .signal-yes { background: rgba(35, 134, 54, 0.25); border: 2px solid var(--go); color: #56d364; }
-        .signal-no { background: rgba(248, 81, 73, 0.25); border: 2px solid var(--alert); color: #ff7b72; }
+        .alert-active { background: rgba(0, 230, 153, 0.1); border-color: var(--up); color: var(--up); animation: glow 1.5s infinite; }
+        @keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <div id="status-badge" class="badge wait">Waiting for Window</div>
+    <div class="header">
+        <div class="market-title"><span class="token">GLD</span> GOLD 15 min</div>
+        <div class="clock-badge" id="timer">00:00</div>
+    </div>
     
-    <div class="timer-display" id="timer">15:00</div>
-    
-    <div class="row">
-        <label class="lbl">Current Yes Price (¢)</label>
-        <input class="inp" id="yes-price" type="number" min="1" max="99" value="50" oninput="evaluateStrategy()">
+    <div class="price-grid">
+        <div class="price-block">
+            <span class="price-label">Target • 1:45pm</span>
+            <span class="target-val">$4,414.87</span>
+        </div>
+        <div class="price-block" style="text-align: right;">
+            <span class="price-label">Now ↑ $1.37</span>
+            <span class="live-val" id="current-spot">$4,416.24</span>
+        </div>
     </div>
 
-    <div class="row">
-        <label class="lbl">Current No Price (¢)</label>
-        <input class="inp" id="no-price" type="number" min="1" max="99" value="50" oninput="evaluateStrategy()">
+    <!-- Strategy Safety Net Alert Window -->
+    <div id="safety-alert" class="alert-banner">WAITING FOR 10M-5M WINDOW</div>
+    
+    <div class="btn-container">
+        <button class="trade-btn btn-up">
+            <span id="up-prob">Up • 60%</span>
+            <span class="multiplier">1.57x</span>
+        </button>
+        <button class="trade-btn btn-down">
+            <span id="down-prob">Down • 40%</span>
+            <span class="multiplier">2.46x</span>
+        </button>
     </div>
-
-    <div id="signal" class="signal-box">HOLD / NO SIGNAL</div>
 </div>
 
 <script>
-    const timerEl = document.getElementById('timer');
-    const badgeEl = document.getElementById('status-badge');
-    const yesInp = document.getElementById('yes-price');
-    const noInp = document.getElementById('no-price');
-    const signalEl = document.getElementById('signal');
+    // HARDCODED LIVE SIMULATION (Replace this chunk with your live API fetch)
+    let currentUpProbability = 60; 
 
-    let inTradingWindow = false;
+    function simulateLiveData() {
+        // Simulating minor price and probability ticks like Kalshi order book
+        const change = Math.random() > 0.5 ? 1 : -1;
+        currentUpProbability = Math.max(10, Math.min(90, currentUpProbability + change));
+        
+        document.getElementById('up-prob').textContent = `Up • ${currentUpProbability}%`;
+        document.getElementById('down-prob').textContent = `Down • ${100 - currentUpProbability}%`;
+        
+        checkSafetyStrategy();
+    }
 
-    function updateTimer() {
+    function checkSafetyStrategy() {
         const now = new Date();
         const minutes = now.getMinutes();
         const seconds = now.getSeconds();
         
-        // Calculate remaining time in the current 15-minute market cycle
         const remMin = 14 - (minutes % 15);
         const remSec = 59 - seconds;
         
-        // Format strings
-        const displayMin = String(remMin).padStart(2, '0');
-        const displaySec = String(remSec).padStart(2, '0');
-        timerEl.textContent = `${displayMin}:${displaySec}`;
-        
-        // Strategy constraint: Active window between 10 and 5 minutes remaining
+        document.getElementById('timer').textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
+        const alertBanner = document.getElementById('safety-alert');
+
+        // Check if inside the 10 to 5 minutes remaining window
         if (remMin >= 5 && remMin < 10) {
-            inTradingWindow = true;
-            badgeEl.textContent = "🚀 TRADING WINDOW OPEN";
-            badgeEl.className = "badge window";
+            if (currentUpProbability >= 82) {
+                alertBanner.textContent = "🎯 TRIGGER: BUY UP CONTRACT!";
+                alertBanner.className = "alert-banner alert-active";
+            } else if ((100 - currentUpProbability) >= 82) {
+                alertBanner.textContent = "🎯 TRIGGER: BUY DOWN CONTRACT!";
+                alertBanner.className = "alert-banner alert-active";
+            } else {
+                alertBanner.textContent = "⌛ WINDOW OPEN: WATCHING FOR 82%+";
+                alertBanner.className = "alert-banner";
+            }
         } else {
-            inTradingWindow = false;
-            badgeEl.textContent = "⏳ WAITING FOR WINDOW (10M-5M)";
-            badgeEl.className = "badge wait";
-        }
-        
-        evaluateStrategy();
-    }
-
-    function evaluateStrategy() {
-        if (!inTradingWindow) {
-            signalEl.textContent = "HOLD (OUTSIDE TIME WINDOW)";
-            signalEl.className = "signal-box";
-            return;
-        }
-
-        const yesVal = parseInt(yesInp.value) || 0;
-        const noVal = parseInt(noInp.value) || 0;
-        const threshold = 82;
-
-        if (yesVal >= threshold) {
-            signalEl.textContent = `🎯 BUY YES CONTRACT (${yesVal}%)`;
-            signalEl.className = "signal-box signal-yes";
-        } else if (noVal >= threshold) {
-            signalEl.textContent = `🎯 BUY NO CONTRACT (${noVal}%)`;
-            signalEl.className = "signal-box signal-no";
-        } else {
-            signalEl.textContent = "WATCHING (UNDER 82%)";
-            signalEl.className = "signal-box";
+            alertBanner.textContent = "⚠️ OUTSIDE TRADING WINDOW";
+            alertBanner.className = "alert-banner";
         }
     }
 
-    // Sync input adjustments between Yes and No (since they mirror each other on Kalshi)
-    yesInp.addEventListener('input', () => {
-        let val = parseInt(yesInp.value);
-        if (val >= 1 && val <= 99) noInp.value = 100 - val;
-    });
-
-    noInp.addEventListener('input', () => {
-        let val = parseInt(noInp.value);
-        if (val >= 1 && val <= 99) yesInp.value = 100 - val;
-    });
-
-    // Run clock loop
-    setInterval(updateTimer, 1000);
-    updateTimer();
+    // Run loops
+    setInterval(simulateLiveData, 2000); 
+    setInterval(checkSafetyStrategy, 1000);
 </script>
 
 </body>

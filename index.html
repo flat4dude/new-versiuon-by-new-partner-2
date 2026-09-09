@@ -26,7 +26,7 @@
         .price-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 25px; }
         .price-block { display: flex; flex-direction: column; }
         .price-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
-        .target-val { font-size: 1.1rem; font-weight: 700; font-family: monospace; color: var(--gold); word-break: break-all; }
+        .target-val { font-size: 1rem; font-weight: 700; font-family: monospace; color: var(--gold); word-break: break-all; }
         
         .btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         .trade-btn { 
@@ -56,12 +56,12 @@
     <div class="price-grid">
         <div class="price-block">
             <span class="price-label">Current Active Market Ticker</span>
-            <span class="target-val" id="market-ticker">LOCATING ROLLING CONTRACTS...</span>
+            <span class="target-val" id="market-ticker">SCANNING DATA FEEDS...</span>
         </div>
     </div>
 
     <!-- Strategy Safety Net Alert Window -->
-    <div id="safety-alert" class="alert-banner">CONNECTING TO PUBLIC PIPELINE...</div>
+    <div id="safety-alert" class="alert-banner">INITIALIZING ENGINE...</div>
     
     <div class="btn-container">
         <div class="trade-btn btn-up">
@@ -80,32 +80,38 @@
 
     let currentYesPrice = 50;
     let currentNoPrice = 50;
-    let fallbackTimerText = "00:00";
-
     const proxyUrl = "https://corsproxy.io?";
 
     async function fetchPublicKalshiPrices() {
         try {
-            // Updated query looks explicitly for open commodity asset matrix fields
-            const targetMarketsUrl = 'https://kalshi.com';
-            const res = await fetch(proxyUrl + encodeURIComponent(targetMarketsUrl));
-            const data = await res.json();
+            // Pulls active commodities sorted cleanly by frequency categories 
+            const endpoint = "https://kalshi.com";
+            const response = await fetch(proxyUrl + encodeURIComponent(endpoint));
+            const data = await response.json();
             
             if (!data.markets || data.markets.length === 0) {
-                tickerEl.textContent = "SEARCHING FOR NEXT CONTRACT INTERVAL...";
                 return;
             }
 
-            // Automated sort to identify the closest chronologically closing open market segment
-            const sortedMarkets = data.markets.sort((a, b) => new Date(a.close_time) - new Date(b.close_time));
-            const activeMarket = sortedMarkets[0];
+            // Isolate active gold contracts running on the 15-minute layout track
+            const goldMarkets = data.markets.filter(m => 
+                m.ticker.includes("GOLD") && 
+                m.frequency === "fifteen_min"
+            );
+
+            if (goldMarkets.length === 0) {
+                tickerEl.textContent = "WAITING FOR ROLLING WINDOW OPEN...";
+                return;
+            }
+
+            // Lock onto the closest expiring active contract block
+            const activeMarket = goldMarkets.sort((a, b) => new Date(a.close_time) - new Date(b.close_time))[0];
             const ticker = activeMarket.ticker;
-            
             tickerEl.textContent = ticker;
 
-            // Step 2: Extract direct book probabilities anonymously
-            const targetBookUrl = `https://kalshi.com{ticker}/orderbook`;
-            const bookRes = await fetch(proxyUrl + encodeURIComponent(targetBookUrl));
+            // Fetch the current order book pricing data matrix
+            const bookUrl = `https://kalshi.com{ticker}/orderbook`;
+            const bookRes = await fetch(proxyUrl + encodeURIComponent(bookUrl));
             const bookData = await bookRes.json();
 
             if (bookData.orderbook) {
@@ -116,7 +122,7 @@
                 document.getElementById('down-prob').textContent = `Down • ${currentNoPrice}%`;
             }
         } catch (err) {
-            console.error("Data loop sync latency encounter:", err);
+            console.error("Feed connection gap encountered:", err);
         }
     }
 
@@ -125,14 +131,11 @@
         const minutes = now.getMinutes();
         const seconds = now.getSeconds();
         
-        // Calculate strict 15-minute countdown blocks
         const remMin = 14 - (minutes % 15);
         const remSec = 59 - seconds;
         
-        fallbackTimerText = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
-        timerEl.textContent = fallbackTimerText;
+        timerEl.textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
 
-        // Verify criteria windows (10 to 5 minutes remaining window)
         if (remMin >= 5 && remMin < 10) {
             if (currentYesPrice >= 82) {
                 alertBanner.textContent = `🎯 TRIGGER: BUY UP CONTRACT (${currentYesPrice}%)`;
@@ -150,9 +153,9 @@
         }
     }
 
-    // High performance query frequency adjustments
-    setInterval(fetchPublicKalshiPrices, 2000); // Scans order books directly every 2 seconds
-    setInterval(processSafetyNetRules, 1000);   // Visual ticks run every 1 second fluidly
+    // High speed query loop synchronization setup
+    setInterval(fetchPublicKalshiPrices, 2000);
+    setInterval(processSafetyNetRules, 1000);
     
     fetchPublicKalshiPrices();
 </script>

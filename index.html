@@ -26,7 +26,7 @@
         .price-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 25px; }
         .price-block { display: flex; flex-direction: column; }
         .price-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
-        .target-val { font-size: 1.2rem; font-weight: 700; font-family: monospace; color: var(--gold); word-break: break-all; }
+        .target-val { font-size: 1.1rem; font-weight: 700; font-family: monospace; color: var(--gold); word-break: break-all; }
         
         .btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         .trade-btn { 
@@ -81,30 +81,31 @@
     let currentYesPrice = 50;
     let currentNoPrice = 50;
 
+    // Direct proxy utility definition to remove browser tracking locks
+    const proxyUrl = "https://corsproxy.io?";
+
     async function fetchPublicKalshiPrices() {
         try {
-            // Step 1: Request active market endpoints directly from Kalshi open API servers
-            const marketsUrl = 'https://kalshi.com';
-            const res = await fetch(marketsUrl);
+            // Appending target URLs directly through the proxy endpoint bypass link
+            const targetMarketsUrl = 'https://kalshi.com';
+            const res = await fetch(proxyUrl + encodeURIComponent(targetMarketsUrl));
             const data = await res.json();
             
             if (!data.markets || data.markets.length === 0) {
-                tickerEl.textContent = "NO OPEN 15M MARKETS";
+                tickerEl.textContent = "NO ACTIVE 15M CONTRACTS";
                 return;
             }
 
-            // Target the closest active binary market segment 
+            // Identify the nearest chronologically closing contract node segment
             const activeMarket = data.markets[0];
             const ticker = activeMarket.ticker;
             tickerEl.textContent = ticker;
 
-            // Step 2: Grab the matching order book matrix numbers anonymously
-            const bookUrl = `https://kalshi.com{ticker}/orderbook`;
-            const bookRes = await fetch(bookUrl);
+            const targetBookUrl = `https://kalshi.com{ticker}/orderbook`;
+            const bookRes = await fetch(proxyUrl + encodeURIComponent(targetBookUrl));
             const bookData = await bookRes.json();
 
             if (bookData.orderbook) {
-                // Kalshi contract price in cents natively maps to probability percentages
                 currentYesPrice = bookData.orderbook.yes_price || 50;
                 currentNoPrice = bookData.orderbook.no_price || 50;
 
@@ -112,7 +113,7 @@
                 document.getElementById('down-prob').textContent = `Down • ${currentNoPrice}%`;
             }
         } catch (err) {
-            console.error("Data tracking delay:", err);
+            console.error("Network syncing latency encounter:", err);
         }
     }
 
@@ -121,13 +122,11 @@
         const minutes = now.getMinutes();
         const seconds = now.getSeconds();
         
-        // Calculate exact 15-minute countdown blocks
         const remMin = 14 - (minutes % 15);
         const remSec = 59 - seconds;
         
         timerEl.textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
 
-        // Verify strategy criteria conditions (10 to 5 minutes remaining window)
         if (remMin >= 5 && remMin < 10) {
             if (currentYesPrice >= 82) {
                 alertBanner.textContent = `🎯 TRIGGER: BUY UP CONTRACT (${currentYesPrice}%)`;
@@ -145,9 +144,9 @@
         }
     }
 
-    // Initialize checking routines
-    setInterval(fetchPublicKalshiPrices, 3000); // Ticks prices directly from Kalshi every 3 seconds
-    setInterval(processSafetyNetRules, 1000);   // Keeps countdown fluid every 1 second
+    // Refresh order statistics metrics every 3 seconds seamlessly
+    setInterval(fetchPublicKalshiPrices, 3000);
+    setInterval(processSafetyNetRules, 1000);
     
     fetchPublicKalshiPrices();
 </script>

@@ -23,26 +23,25 @@
         .token { background: var(--gold); color: #000; font-size: 0.75rem; font-weight: 900; padding: 3px 6px; border-radius: 6px; }
         .clock-badge { background: #202430; font-family: monospace; font-size: 0.95rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; }
         
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .price-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 25px; }
         .price-block { display: flex; flex-direction: column; }
         .price-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
-        .target-val { font-size: 1.5rem; font-weight: 700; font-family: monospace; }
-        .live-val { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: var(--down); }
+        .target-val { font-size: 1.2rem; font-weight: 700; font-family: monospace; color: var(--gold); word-break: break-all; }
         
         .btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         .trade-btn { 
-            border: none; border-radius: 20px; padding: 16px; font-size: 1.1rem; font-weight: 800; 
-            color: #000; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+            border: none; border-radius: 20px; padding: 18px; font-size: 1.2rem; font-weight: 800; 
+            color: #000; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
         }
         .btn-up { background: var(--up); }
         .btn-down { background: var(--down); color: #fff; }
-        .multiplier { font-size: 0.8rem; font-weight: 500; opacity: 0.8; }
         
         .alert-banner {
-            text-align: center; padding: 12px; border-radius: 12px; font-size: 1rem; font-weight: 700;
+            text-align: center; padding: 14px; border-radius: 12px; font-size: 1rem; font-weight: 700;
             background: #1a1d29; border: 1px solid var(--border); color: var(--muted); margin-bottom: 20px;
         }
-        .alert-active { background: rgba(0, 230, 153, 0.1); border-color: var(--up); color: var(--up); animation: glow 1.5s infinite; }
+        .alert-active { background: rgba(0, 230, 153, 0.15); border-color: var(--up); color: var(--up); animation: glow 1.5s infinite; }
+        .alert-active-down { background: rgba(255, 51, 85, 0.15); border-color: var(--down); color: var(--down); animation: glow 1.5s infinite; }
         @keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     </style>
 </head>
@@ -56,64 +55,86 @@
     
     <div class="price-grid">
         <div class="price-block">
-            <span class="price-label">Target • 1:45pm</span>
-            <span class="target-val">$4,414.87</span>
-        </div>
-        <div class="price-block" style="text-align: right;">
-            <span class="price-label">Now ↑ $1.37</span>
-            <span class="live-val" id="current-spot">$4,416.24</span>
+            <span class="price-label">Current Active Market Ticker</span>
+            <span class="target-val" id="market-ticker">LOADING ACTIVE TICKER...</span>
         </div>
     </div>
 
     <!-- Strategy Safety Net Alert Window -->
-    <div id="safety-alert" class="alert-banner">WAITING FOR 10M-5M WINDOW</div>
+    <div id="safety-alert" class="alert-banner">CONNECTING TO KALSHI FEED...</div>
     
     <div class="btn-container">
-        <button class="trade-btn btn-up">
-            <span id="up-prob">Up • 60%</span>
-            <span class="multiplier">1.57x</span>
-        </button>
-        <button class="trade-btn btn-down">
-            <span id="down-prob">Down • 40%</span>
-            <span class="multiplier">2.46x</span>
-        </button>
+        <div class="trade-btn btn-up">
+            <span id="up-prob">Up • --%</span>
+        </div>
+        <div class="trade-btn btn-down">
+            <span id="down-prob">Down • --%</span>
+        </div>
     </div>
 </div>
 
 <script>
-    // HARDCODED LIVE SIMULATION (Replace this chunk with your live API fetch)
-    let currentUpProbability = 60; 
+    const alertBanner = document.getElementById('safety-alert');
+    const timerEl = document.getElementById('timer');
+    const tickerEl = document.getElementById('market-ticker');
 
-    function simulateLiveData() {
-        // Simulating minor price and probability ticks like Kalshi order book
-        const change = Math.random() > 0.5 ? 1 : -1;
-        currentUpProbability = Math.max(10, Math.min(90, currentUpProbability + change));
-        
-        document.getElementById('up-prob').textContent = `Up • ${currentUpProbability}%`;
-        document.getElementById('down-prob').textContent = `Down • ${100 - currentUpProbability}%`;
-        
-        checkSafetyStrategy();
+    let currentYesPrice = 50;
+    let currentNoPrice = 50;
+
+    async function fetchPublicKalshiPrices() {
+        try {
+            // Step 1: Request active market endpoints directly from Kalshi open API servers
+            const marketsUrl = 'https://kalshi.com';
+            const res = await fetch(marketsUrl);
+            const data = await res.json();
+            
+            if (!data.markets || data.markets.length === 0) {
+                tickerEl.textContent = "NO OPEN 15M MARKETS";
+                return;
+            }
+
+            // Target the closest active binary market segment 
+            const activeMarket = data.markets[0];
+            const ticker = activeMarket.ticker;
+            tickerEl.textContent = ticker;
+
+            // Step 2: Grab the matching order book matrix numbers anonymously
+            const bookUrl = `https://kalshi.com{ticker}/orderbook`;
+            const bookRes = await fetch(bookUrl);
+            const bookData = await bookRes.json();
+
+            if (bookData.orderbook) {
+                // Kalshi contract price in cents natively maps to probability percentages
+                currentYesPrice = bookData.orderbook.yes_price || 50;
+                currentNoPrice = bookData.orderbook.no_price || 50;
+
+                document.getElementById('up-prob').textContent = `Up • ${currentYesPrice}%`;
+                document.getElementById('down-prob').textContent = `Down • ${currentNoPrice}%`;
+            }
+        } catch (err) {
+            console.error("Data tracking delay:", err);
+        }
     }
 
-    function checkSafetyStrategy() {
+    function processSafetyNetRules() {
         const now = new Date();
         const minutes = now.getMinutes();
         const seconds = now.getSeconds();
         
+        // Calculate exact 15-minute countdown blocks
         const remMin = 14 - (minutes % 15);
         const remSec = 59 - seconds;
         
-        document.getElementById('timer').textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
-        const alertBanner = document.getElementById('safety-alert');
+        timerEl.textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
 
-        // Check if inside the 10 to 5 minutes remaining window
+        // Verify strategy criteria conditions (10 to 5 minutes remaining window)
         if (remMin >= 5 && remMin < 10) {
-            if (currentUpProbability >= 82) {
-                alertBanner.textContent = "🎯 TRIGGER: BUY UP CONTRACT!";
+            if (currentYesPrice >= 82) {
+                alertBanner.textContent = `🎯 TRIGGER: BUY UP CONTRACT (${currentYesPrice}%)`;
                 alertBanner.className = "alert-banner alert-active";
-            } else if ((100 - currentUpProbability) >= 82) {
-                alertBanner.textContent = "🎯 TRIGGER: BUY DOWN CONTRACT!";
-                alertBanner.className = "alert-banner alert-active";
+            } else if (currentNoPrice >= 82) {
+                alertBanner.textContent = `🎯 TRIGGER: BUY DOWN CONTRACT (${currentNoPrice}%)`;
+                alertBanner.className = "alert-banner alert-active-down";
             } else {
                 alertBanner.textContent = "⌛ WINDOW OPEN: WATCHING FOR 82%+";
                 alertBanner.className = "alert-banner";
@@ -124,9 +145,11 @@
         }
     }
 
-    // Run loops
-    setInterval(simulateLiveData, 2000); 
-    setInterval(checkSafetyStrategy, 1000);
+    // Initialize checking routines
+    setInterval(fetchPublicKalshiPrices, 3000); // Ticks prices directly from Kalshi every 3 seconds
+    setInterval(processSafetyNetRules, 1000);   // Keeps countdown fluid every 1 second
+    
+    fetchPublicKalshiPrices();
 </script>
 
 </body>
